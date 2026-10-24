@@ -1,0 +1,29 @@
+---
+- name: Check for existing Kubernetes files
+  stat:
+    path: /etc/kubernetes/kubelet.conf
+  register: k8s_joined
+
+- name: Remove stale node from cluster (from master)
+  delegate_to: master
+  become_user: "{{ k8s_user }}"
+  command: kubectl delete node {{ inventory_hostname }} --ignore-not-found=true
+  when: k8s_joined.stat.exists
+  changed_when: false
+
+- name: Reset worker configuration
+  shell: |
+    kubeadm reset -f
+    rm -rf /etc/kubernetes/ /var/lib/kubelet/ /etc/cni/
+  when: k8s_joined.stat.exists
+
+- name: Restart containerd
+  service:
+    name: containerd
+    state: restarted
+  when: k8s_joined.stat.exists
+
+- name: Join worker to the cluster
+  command: "{{ hostvars['K8S_TOKEN_HOLDER']['join_command'] }}"
+  args:
+    creates: /etc/kubernetes/kubelet.conf

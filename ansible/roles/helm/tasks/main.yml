@@ -1,0 +1,18 @@
+---
+- name: Check if Helm is installed
+  stat:
+    path: /usr/local/bin/helm
+  register: helm_installed
+
+- name: Install Helm 3
+  become: true
+  shell: curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+  when: not helm_installed.stat.exists
+
+- name: Add Helm repositories
+  become_user: "{{ k8s_user }}"
+  shell: |
+    helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+    helm repo add grafana https://grafana.github.io/helm-charts
+    helm repo update
+  changed_when: false

@@ -1,0 +1,222 @@
+heat_template_version: '2018-08-31'
+
+description: >
+  Two-tier infrastructure: frontend and backend networks, one router,
+  one security group and four instances (2x Ubuntu 22.04, 2x CirrOS),
+  each reachable through a floating IP.
+
+parameters:
+  external_network:
+    type: string
+    default: provider
+    description: External (provider) network used for the router gateway and floating IPs
+  ubuntu_image:
+    type: string
+    default: "Ubuntu 22.04"          # must match the Glance image name exactly (case-sensitive)
+  cirros_image:
+    type: string
+    default: cirros
+  ubuntu_flavor:
+    type: string
+    default: m1.small
+  cirros_flavor:
+    type: string
+    default: m1.nano
+  keypair_name:
+    type: string
+    default: ubuntu-key
+    description: Existing Nova keypair used for SSH access
+
+resources:
+  # ---------------- NETWORKS ----------------
+  frontend_net:
+    type: OS::Neutron::Net
+    properties:
+      name: heat-frontend-net
+
+  frontend_subnet:
+    type: OS::Neutron::Subnet
+    properties:
+      network: { get_resource: frontend_net }
+      cidr: 10.10.0.0/24
+      dns_nameservers: [8.8.8.8, 8.8.4.4]
+
+  backend_net:
+    type: OS::Neutron::Net
+    properties:
+      name: heat-backend-net
+
+  backend_subnet:
+    type: OS::Neutron::Subnet
+    properties:
+      network: { get_resource: backend_net }
+      cidr: 10.20.0.0/24
+      dns_nameservers: [8.8.8.8, 8.8.4.4]
+
+  # ---------------- ROUTER ----------------
+  router:
+    type: OS::Neutron::Router
+    properties:
+      name: heat-router
+      external_gateway_info:
+        network: { get_param: external_network }
+
+  router_int_frontend:
+    type: OS::Neutron::RouterInterface
+    properties:
+      router: { get_resource: router }
+      subnet: { get_resource: frontend_subnet }
+
+  router_int_backend:
+    type: OS::Neutron::RouterInterface
+    properties:
+      router: { get_resource: router }
+      subnet: { get_resource: backend_subnet }
+
+  # ---------------- SECURITY GROUP ----------------
+  sg_all:
+    type: OS::Neutron::SecurityGroup
+    properties:
+      name: heat-sg-all
+      rules:
+        - { protocol: tcp, port_range_min: 22,  port_range_max: 22 }
+        - { protocol: tcp, port_range_min: 80,  port_range_max: 80 }
+        - { protocol: tcp, port_range_min: 443, port_range_max: 443 }
+        # MySQL only reachable from the frontend subnet (not from the Internet)
+        - { protocol: tcp, port_range_min: 3306, port_range_max: 3306, remote_ip_prefix: 10.10.0.0/24 }
+        - { protocol: icmp }
+        # allow all outgoing traffic
+        - { direction: egress, ethertype: IPv4 }
+
+  # ---------------- CLOUD-INIT ----------------
+  # Key-based SSH only. No password is stored in this template.
+  cloud_config:
+    type: OS::Heat::CloudConfig
+    properties:
+      cloud_config:
+        ssh_pwauth: false
+
+  cloud_init:
+    type: OS::Heat::MultipartMime
+    properties:
+      parts:
+        - config: { get_resource: cloud_config }
+          type: multipart
+
+  # ---------------- UBUNTU 1 (FRONTEND) ----------------
+  port_u1:
+    type: OS::Neutron::Port
+    properties:
+      network: { get_resource: frontend_net }
+      security_groups: [{ get_resource: sg_all }]
+
+  ubuntu1:
+    type: OS::Nova::Server
+    properties:
+      name: heat-ubuntu-frontend
+      image: { get_param: ubuntu_image }
+      flavor: { get_param: ubuntu_flavor }
+      key_name: { get_param: keypair_name }
+      networks:
+        - port: { get_resource: port_u1 }
+      user_data_format: RAW
+      user_data: { get_resource: cloud_init }
+
+  fip_u1:
+    type: OS::Neutron::FloatingIP
+    depends_on: router_int_frontend
+    properties:
+      floating_network: { get_param: external_network }
+      port_id: { get_resource: port_u1 }
+
+  # ---------------- UBUNTU 2 (BACKEND) ----------------
+  port_u2:
+    type: OS::Neutron::Port
+    properties:
+      network: { get_resource: backend_net }
+      security_groups: [{ get_resource: sg_all }]
+
+  ubuntu2:
+    type: OS::Nova::Server
+    properties:
+      name: heat-ubuntu-backend
+      image: { get_param: ubuntu_image }
+      flavor: { get_param: ubuntu_flavor }
+      key_name: { get_param: keypair_name }
+      networks:
+        - port: { get_resource: port_u2 }
+      user_data_format: RAW
+      user_data: { get_resource: cloud_init }
+
+  fip_u2:
+    type: OS::Neutron::FloatingIP
+    depends_on: router_int_backend
+    properties:
+      floating_network: { get_param: external_network }
+      port_id: { get_resource: port_u2 }
+
+  # ---------------- CIRROS 1 (FRONTEND) ----------------
+  port_c1:
+    type: OS::Neutron::Port
+    properties:
+      network: { get_resource: frontend_net }
+      security_groups: [{ get_resource: sg_all }]
+
+  cirros1:
+    type: OS::Nova::Server
+    properties:
+      name: heat-cirros-frontend
+      image: { get_param: cirros_image }
+      flavor: { get_param: cirros_flavor }
+      key_name: { get_param: keypair_name }
+      networks:
+        - port: { get_resource: port_c1 }
+
+  fip_c1:
+    type: OS::Neutron::FloatingIP
+    depends_on: router_int_frontend
+    properties:
+      floating_network: { get_param: external_network }
+      port_id: { get_resource: port_c1 }
+
+  # ---------------- CIRROS 2 (BACKEND) ----------------
+  port_c2:
+    type: OS::Neutron::Port
+    properties:
+      network: { get_resource: backend_net }
+      security_groups: [{ get_resource: sg_all }]
+
+  cirros2:
+    type: OS::Nova::Server
+    properties:
+      name: heat-cirros-backend
+      image: { get_param: cirros_image }
+      flavor: { get_param: cirros_flavor }
+      key_name: { get_param: keypair_name }
+      networks:
+        - port: { get_resource: port_c2 }
+
+  fip_c2:
+    type: OS::Neutron::FloatingIP
+    depends_on: router_int_backend
+    properties:
+      floating_network: { get_param: external_network }
+      port_id: { get_resource: port_c2 }
+
+outputs:
+  ubuntu_frontend_ip:
+    description: Floating IP of the Ubuntu frontend
+    value: { get_attr: [fip_u1, floating_ip_address] }
+  ubuntu_backend_ip:
+    description: Floating IP of the Ubuntu backend
+    value: { get_attr: [fip_u2, floating_ip_address] }
+  cirros_frontend_ip:
+    value: { get_attr: [fip_c1, floating_ip_address] }
+  cirros_backend_ip:
+    value: { get_attr: [fip_c2, floating_ip_address] }
+  ssh_ubuntu_frontend:
+    value:
+      str_replace:
+        template: ssh -i ~/.ssh/<your-key> ubuntu@IP
+        params:
+          IP: { get_attr: [fip_u1, floating_ip_address] }

@@ -1,0 +1,8 @@
+*.pem
+*.key
+id_rsa*
+*-openrc
+*openrc.sh
+.vault_pass
+*.retry
+secrets*.yaml

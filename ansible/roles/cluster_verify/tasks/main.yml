@@ -1,0 +1,27 @@
+---
+- name: Wait for calico-node on every node
+  become_user: "{{ k8s_user }}"
+  shell: kubectl get pods -n kube-system -l k8s-app=calico-node --no-headers | grep -c Running
+  register: calico_nodes
+  until: calico_nodes.stdout | int >= (groups['k8s_cluster'] | length)
+  retries: 50
+  delay: 10
+  changed_when: false
+
+- name: Wait for all nodes Ready
+  become_user: "{{ k8s_user }}"
+  shell: kubectl get nodes --no-headers | grep -c ' Ready'
+  register: nodes_ready
+  until: nodes_ready.stdout | int == (groups['k8s_cluster'] | length)
+  retries: 50
+  delay: 10
+  changed_when: false
+
+- name: Show nodes
+  become_user: "{{ k8s_user }}"
+  command: kubectl get nodes -o wide
+  register: nodes_output
+  changed_when: false
+
+- debug:
+    msg: "{{ nodes_output.stdout_lines }}"

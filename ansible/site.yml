@@ -1,0 +1,42 @@
+---
+# Full Kubernetes cluster: prerequisites -> kubeadm -> Calico -> workers -> apps -> monitoring
+- name: Detect internal IPs
+  hosts: all
+  gather_facts: true
+  tasks:
+    - debug:
+        msg: "{{ inventory_hostname }} - internal IP: {{ ansible_default_ipv4.address }}"
+
+- name: Prepare all nodes
+  hosts: k8s_cluster
+  become: true
+  roles:
+    - common
+    - containerd
+    - kubernetes
+
+- name: Initialize control plane and CNI
+  hosts: master
+  become: true
+  roles:
+    - control_plane
+    - calico
+
+- name: Join workers
+  hosts: workers
+  become: true
+  roles:
+    - workers
+
+- name: Verify cluster
+  hosts: master
+  roles:
+    - cluster_verify
+
+- name: Demo applications and Helm
+  hosts: master
+  roles:
+    - demo_apps
+    - helm
+
+# Full monitoring + AI anomaly detection + HPA + HA tests: see k8s-ai-monitoring.yml

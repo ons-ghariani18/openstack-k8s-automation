@@ -1,0 +1,5 @@
+---
+k8s_user: ubuntu
+# Never commit a real password. Provide it with:
+#   ansible-playbook ... -e vault_grafana_admin_password='...'   (or ansible-vault)
+grafana_admin_password: "{{ vault_grafana_admin_password | default('changeme') }}"

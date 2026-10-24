@@ -1,0 +1,39 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: custom-alerts
+  namespace: monitoring
+data:
+  alerts.yml: |
+    groups:
+    - name: custom-rules
+      interval: 30s
+      rules:
+      - alert: HighPodCPU
+        expr: sum(rate(container_cpu_usage_seconds_total[5m])) by (pod, namespace) > 0.8
+        for: 2m
+        labels: {severity: warning}
+        annotations:
+          summary: "Pod with high CPU usage"
+          description: "A pod uses more than 0.8 CPU core"
+      - alert: PodCrashLooping
+        expr: rate(kube_pod_container_status_restarts_total[15m]) > 0
+        for: 5m
+        labels: {severity: critical}
+        annotations:
+          summary: "Pod restarting frequently"
+          description: "A pod is in a crash loop"
+      - alert: NodeNotReady
+        expr: up{job="node"} == 0
+        for: 5m
+        labels: {severity: critical}
+        annotations:
+          summary: "Node not ready"
+          description: "A node is offline"
+      - alert: HighMemoryUsage
+        expr: (node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) / node_memory_MemTotal_bytes > 0.85
+        for: 5m
+        labels: {severity: warning}
+        annotations:
+          summary: "High memory usage"
+          description: "Memory above 85%"

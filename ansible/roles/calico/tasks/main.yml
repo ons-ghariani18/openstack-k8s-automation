@@ -1,0 +1,30 @@
+---
+- name: Check if Calico is already installed
+  become_user: "{{ k8s_user }}"
+  shell: kubectl get daemonset -n kube-system calico-node 2>/dev/null
+  register: calico_check
+  changed_when: false
+  failed_when: false
+
+- name: Download Calico manifest
+  become_user: "{{ k8s_user }}"
+  get_url:
+    url: "https://raw.githubusercontent.com/projectcalico/calico/{{ calico_version }}/manifests/calico.yaml"
+    dest: "/home/{{ k8s_user }}/calico.yaml"
+    mode: '0644'
+  when: calico_check.rc != 0
+
+- name: Apply Calico
+  become_user: "{{ k8s_user }}"
+  command: kubectl apply -f /home/{{ k8s_user }}/calico.yaml
+  when: calico_check.rc != 0
+
+- name: Wait for first calico-node pod
+  become_user: "{{ k8s_user }}"
+  shell: kubectl get pods -n kube-system -l k8s-app=calico-node --no-headers 2>/dev/null | grep -c Running
+  register: calico_ready
+  until: calico_ready.stdout | int >= 1
+  retries: 40
+  delay: 10
+  changed_when: false
+  failed_when: false
