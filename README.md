@@ -225,9 +225,6 @@ kubectl apply -f ../kubernetes/failure-scenarios/cpu-stress-pod.yaml
 **Custom alert rules loaded in Prometheus**
 ![Alerts](docs/images/04-prometheus-alert-rules.png)
 
-**Pod crash: Kubernetes keeps restarting it (CrashLoopBackOff, restart counter increasing)**
-![Crash](docs/images/05-pod-crashloop-restart.png)
-
 **Injected CPU anomaly (`cpu-stress`) visible in Grafana**
 ![Grafana](docs/images/06-grafana-cpu-stress.png)
 
@@ -378,8 +375,6 @@ kubectl describe pod <pod> | grep Image            # confirm the new image is ru
     ├── openstack-controller-install.md
     └── images/
 ```
-
-
 
 
 ## 10. Authors
