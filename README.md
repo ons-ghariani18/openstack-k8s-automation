@@ -43,7 +43,7 @@ The goal of the project is a cloud platform that is **fully automated after the 
 
 > **About the "AI" part.** The anomaly detector uses a statistical method (Z-score against a rolling baseline of 30 measurements) and the load predictor uses a moving average with trend detection. No machine-learning model is trained. TensorFlow was evaluated during Phase 1.
 
-![Project poster: requirements, physical and logical architecture](docs/images/00-architecture-poster.png)
+![Project poster: requirements, physical and logical architecture](00-architecture-poster.png)
 
 ---
 
