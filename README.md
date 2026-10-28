@@ -179,7 +179,7 @@ We wrote the infrastructure and configuration files so that the cluster builds i
 **Autoscaling and availability** – metrics-server and an HPA (target 50% CPU, 1 to 10 replicas), plus a 3-replica application with pod anti-affinity, liveness and readiness probes.
 
 ### Phase 4 – Application development
-The application (Spring Boot backend, Angular frontend, MySQL, Ollama integration) is developed in a separate repository: `[À COMPLÉTER: link]`.
+The application deployed on this platform is FlexBidaya, a web platform that brings together the Tunisian entrepreneurial ecosystem (entrepreneurs and business plans, events, training, forums). It is built with Spring Boot, Angular and MySQL, with an Ollama integration.
 
 ### Phase 5 – Deployment and validation
 
