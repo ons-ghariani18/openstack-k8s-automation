@@ -379,15 +379,9 @@ kubectl describe pod <pod> | grep Image            # confirm the new image is ru
     └── images/
 ```
 
-## 9. Roadmap
-- [ ] Document the Octavia load balancer, custom firewall rules (security groups) and Cinder backup
-- [ ] Add the Ollama integration and the Jenkins pipeline configuration files
-- [ ] Add the node failure screenshot
-- [ ] Send anomaly detector alerts to Alertmanager
-- [ ] Scan Docker images in the Jenkins pipeline
-- [ ] Highly available controller
-- [ ] GitOps (Argo CD), centralized logging (Loki), Terraform, TLS everywhere
+
+
 
 ## 10. Authors
-Team of 7 (4th year, ESPRIT): Ons Ghariani, Malek, Latifa, Eya, Tlili, Aziz, `[À COMPLÉTER: 7th member]`.
+Team of 7 (4th year, ESPRIT): Ons Ghariani, Malek, Latifa, Eya, Tlili, Aziz.
 **Ons Ghariani**: [LinkedIn](https://www.linkedin.com/in/ons-ghariani-266103262) · [GitHub](https://github.com/ons-ghariani18)
